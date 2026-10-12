@@ -5,7 +5,7 @@
 
 [resource]
 script = ExtResource("2_8r1fl")
-id = &"wood"
+id = &"wood_00"
 display_name = "Pine wood"
 description = "The weakest wood you can coolect , but it can create a lot more than you thimk."
 metadata/_custom_type_script = "uid://wluy6hnm1xdj"
