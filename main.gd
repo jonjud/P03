@@ -50,6 +50,18 @@ func _ready() -> void:
 	
 	print("\n===== CASE 4: NOT ENOUGH =====")
 	print_result(inv4, result4)
+	
+	# CASE 5: มีช่องว่างปนอยู่ 50 / ว่าง / 30 หัก 60
+	# ช่องท้ายว่าง ช่องแรกเหลือ 20 ช่องกลางยังว่าง และต้องไม่ crash
+	var inv5: Inventory = Inventory.new()
+	add_test_slot(inv5, item, 50)
+	add_test_slot(inv5, null, 0)
+	add_test_slot(inv5, item, 30)
+	
+	var result5: Dictionary = inv5.remove_item(db, &"stone_00", 60)
+	
+	print("\n===== CASE 5: EMPTY SLOT IN THE MIDDLE =====")
+	print_result(inv5, result5)
 
 
 # สร้าง slot สำหรับ test
