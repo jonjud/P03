@@ -5,13 +5,17 @@ class_name Inventory
 @export var max_slots: int = 20          # หรือใช้ weight-based ภายหลัง
 @export var owner_id: String = ""        # character / player / world storage
 
+
 func add_to_existing_stacks(db : ItemDatabase , id : StringName , quantity : int) -> Dictionary :
-	var remaining : int = quantity	
-	var item : ItemData = db.get_item(id)
+	var remaining : int = quantity #ใส่แล้วเหลือเท่าไหร่
+	var item : ItemData = db.get_item(id) #item ดึงมาจาก id โดยใช้ฟังก์ชั่นหา item จาก id ที่เขียนไว้
+	
 	if item == null :
-		return {"added" : 0, "remaining" : remaining , "reason" : "there's no item attached to the id"}
+		return {"added" : 0, "remaining" : remaining , "reason" : &"error_null_id"}
 	if quantity <= 0 :
-		return {"added" : 0, "remaining" : remaining , "reason" : "Why you wanna add 0 or lesser than that ? "}
+		return {"added" : 0, "remaining" : remaining , "reason" : &"error_wrong_quantity"}
+	
+	#ไล่หาอันที่มีอยู่แล้ว (Existed) ก่อนแล้วเอาไปใส่ พอ quantity ที่ใส่หมดก็ break , แต่ถ้าใส่ไม่หมดก็เอาไปลบอันที่ใส่ไปแล้ว แล้วย้ายไปลูปต่อไป
 	for slot in slots :
 		if remaining <= 0 :
 			break
@@ -19,7 +23,9 @@ func add_to_existing_stacks(db : ItemDatabase , id : StringName , quantity : int
 			var space : int = maxi(0,item.max_stack - slot.quantity) #ช่องว่าง
 			var to_add : int = mini(space, remaining) #ช่องที่เติมได้
 			slot.quantity += to_add
-			remaining -= to_add
+			remaining -= to_add #
+	
+	#พอหลุดจากลูปที่แล้วคือเติมอันที่มีอยู่แล้ว อาจจะไม่มีหรือใส่จนหมดละ , แล้วก็เพิ่มอันแรกที่เจอว่า item_data == null เลย เติมให้หมด แต่ถ้าไม่หมดไป slot ต่อไป (ใช้ slot ที่สร้างไว้อยู่แล้ว)
 	for slot in slots :
 		if remaining <= 0 :
 			break
@@ -28,7 +34,7 @@ func add_to_existing_stacks(db : ItemDatabase , id : StringName , quantity : int
 			slot.item_data = item
 			slot.quantity = to_add #ใช้ = เลยเพราะเรามีพื้นฐานว่าถ้าเริ่มช่องใหม่จะมี 1 เสมอ
 			remaining -= to_add
-			
+	#เหมือนลูปข้างบนแต่สร้าง slot ใหม่เลย
 	while remaining > 0 and slots.size() < max_slots :
 		var s : InventorySlot = InventorySlot.new()
 		var to_add : int = mini(item.max_stack , remaining)
@@ -36,4 +42,9 @@ func add_to_existing_stacks(db : ItemDatabase , id : StringName , quantity : int
 		s.quantity = to_add #ใช้ = เลยเพราะเรามีพื้นฐานว่าถ้าเริ่มช่องใหม่จะมี 1 เสมอ
 		slots.append(s)
 		remaining -= to_add
-	return {"added" : quantity - remaining, "remaining" : remaining, "reason" : "ok"}
+	var added : int = quantity - remaining
+	var reason : StringName = &"ok"
+	
+	if remaining > 0 :
+		reason = &"partial_full" if added > 0 else &"full"
+	return {"added" : added, "remaining" : remaining, "reason" : reason}
