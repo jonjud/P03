@@ -48,3 +48,60 @@ func add_to_existing_stacks(db : ItemDatabase , id : StringName , quantity : int
 	if remaining > 0 :
 		reason = &"partial_full" if added > 0 else &"full"
 	return {"added" : added, "remaining" : remaining, "reason" : reason}
+
+
+func remove_item(db: ItemDatabase, id: StringName, quantity: int) -> Dictionary:
+	var remaining: int = quantity
+	# 1. Validate input
+	if db == null or db.get_item(id) == null:
+		return {
+			"removed": 0,
+			"remaining": remaining,
+			"reason": &"error_null_id"
+		}
+	if quantity <= 0:
+		return {
+			"removed": 0,
+			"remaining": remaining,
+			"reason": &"error_wrong_quantity"
+		}
+	var item = db.get_item(id)
+	
+	# 2. Count only matching items before modifying slots
+	var total: int = 0
+	for slot in slots:
+		if slot != null and slot.item_data.id == id and slot.quantity > 0:
+			total += slot.quantity
+	# Atomic failure: leave slots unchanged
+	if total < quantity:
+		return {
+			"removed": 0,
+			"remaining": quantity,
+			"reason": &"not_enough_quantity"
+		}
+	# 3. Remove from the last slot to the first
+	for i in range(slots.size() - 1, -1, -1): #Start stop step
+		if remaining == 0:
+			break
+		var slot = slots[i]
+		if slot == null:
+			continue #ถ้าว่าง ไม่ต้องทำอะไร ไปต่อได้เลย
+		if slot.item_data.id == id and slot.quantity > 0:
+			var to_remove: int = mini(slot.quantity, remaining)
+			slot.quantity -= to_remove
+			remaining -= to_remove
+			# 4. Keep the slot; clear its contents
+			if slot.quantity == 0:
+				slot.item_data = null
+				slot.quantity = 0
+	# 5. Return consistent result
+	var removed: int = quantity - remaining
+	return {
+		"removed": removed,
+		"remaining": remaining,
+		"reason": &"ok"
+	}
+
+	
+	
+	
