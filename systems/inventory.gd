@@ -8,9 +8,11 @@ class_name Inventory
 
 func add_to_existing_stacks(db : ItemDatabase , id : StringName , quantity : int) -> Dictionary :
 	var remaining : int = quantity #ใส่แล้วเหลือเท่าไหร่
-	var item : ItemData = db.get_item(id) #item ดึงมาจาก id โดยใช้ฟังก์ชั่นหา item จาก id ที่เขียนไว้
 	
-	if item == null :
+	if db == null:
+		return {"added" : 0, "remaining" : remaining , "reason" : &"error_null_id"}
+	var item : ItemData = db.get_item(id) #item ดึงมาจาก id โดยใช้ฟังก์ชั่นหา item จาก id ที่เขียนไว้
+	if item == null:
 		return {"added" : 0, "remaining" : remaining , "reason" : &"error_null_id"}
 	if quantity <= 0 :
 		return {"added" : 0, "remaining" : remaining , "reason" : &"error_wrong_quantity"}
