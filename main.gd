@@ -5,63 +5,77 @@ extends Node2D
 func _ready() -> void:
 	var db: ItemDatabase = ItemDatabase.new()
 	db.load_from_directory("res://data/")
-	var item = db.get_item(&"stone_00")
+	var item = db.get_item(&"wooden_sword_00")
 	
 	if item == null:
-		print("ERROR: stone_00 not found")
+		print("ERROR: wooden_sword_00 not found")
 		return
 		
-	# CASE 1: มี 99 หัก 30 -> เหลือ 69
-	var inv1: Inventory = Inventory.new()
-	add_test_slot(inv1, item, 99)
+	var inv1 : Inventory = Inventory.new()
+	var inv2 : Inventory = Inventory.new()
+	var inv3 : Inventory = Inventory.new()
+	var inv4 : Inventory = Inventory.new()
+	var inv5 : Inventory = Inventory.new()
 	
-	var result1: Dictionary = inv1.remove_item(db, &"stone_00", 30)
+	#Case 1
+	print("====CASE 1====")
+	var result1 : Dictionary = inv1.add_to_existing_stacks(db,&"wooden_sword_00",3)
+	print_result(inv1,result1)
 	
-	print("\n===== CASE 1: REMOVE PARTIAL =====")
-	print_result(inv1, result1)
+	#Case 2
+	print("\n====CASE 2====")
+	var slot2_1 : InventorySlot = InventorySlot.new()
+	slot2_1.item_data = db.get_item(&"wooden_sword_00")
+	slot2_1.quantity = 1
+	inv2.slots.append(slot2_1)
+	var result2 : Dictionary = inv2.add_to_existing_stacks(db,&"wooden_sword_00",1)
+	print_result(inv2,result2)
 	
-	# CASE 2: มี 99 หัก 99 -> ช่องว่าง
-	var inv2: Inventory = Inventory.new()
-	add_test_slot(inv2, item, 99)
+	#Case3
+	inv3.max_slots = 2
+	var result3 : Dictionary = inv3.add_to_existing_stacks(db,&"wooden_sword_00",3)
 	
-	var result2: Dictionary = inv2.remove_item(db, &"stone_00", 99)
+	print("\n====CASE 3====")
+	print_result(inv3,result3)
 	
-	print("\n===== CASE 2: REMOVE ALL =====")
-	print_result(inv2, result2)
+	#Case 4
+	var slot4_1 : InventorySlot = InventorySlot.new()
+	var slot4_2 : InventorySlot = InventorySlot.new()
+	var slot4_3: InventorySlot = InventorySlot.new()
 	
-	# CASE 3: มี 99 กับ 50 หัก 120
-	# ช่องท้ายต้องว่าง ช่องแรกเหลือ 29
-	var inv3: Inventory = Inventory.new()
-	add_test_slot(inv3, item, 99)
-	add_test_slot(inv3, item, 50)
-	
-	var result3: Dictionary = inv3.remove_item(db, &"stone_00", 120)
-	
-	print("\n===== CASE 3: REMOVE FROM LAST SLOT =====")
-	print_result(inv3, result3)
-	
-	# CASE 4: มีรวม 149 หัก 150
-	# ต้องล้มเหลว และจำนวนเดิมต้องไม่เปลี่ยน
-	var inv4: Inventory = Inventory.new()
-	add_test_slot(inv4, item, 99)
-	add_test_slot(inv4, item, 50)
-	
-	var result4: Dictionary = inv4.remove_item(db, &"stone_00", 150)
-	
-	print("\n===== CASE 4: NOT ENOUGH =====")
-	print_result(inv4, result4)
-	
-	# CASE 5: มีช่องว่างปนอยู่ 50 / ว่าง / 30 หัก 60
-	# ช่องท้ายว่าง ช่องแรกเหลือ 20 ช่องกลางยังว่าง และต้องไม่ crash
-	var inv5: Inventory = Inventory.new()
-	add_test_slot(inv5, item, 50)
-	add_test_slot(inv5, null, 0)
-	add_test_slot(inv5, item, 30)
-	
-	var result5: Dictionary = inv5.remove_item(db, &"stone_00", 60)
-	
-	print("\n===== CASE 5: EMPTY SLOT IN THE MIDDLE =====")
-	print_result(inv5, result5)
+	slot4_1.item_data = db.get_item(&"wooden_sword_00")
+	slot4_2 .item_data = db.get_item(&"wooden_sword_00")
+	slot4_3 .item_data = db.get_item(&"wooden_sword_00")
+
+	inv4.slots.append(slot4_1)
+	inv4.slots.append(slot4_2)
+	inv4.slots.append(slot4_3)
+
+	var result4 : Dictionary = inv4.remove_item(db,&"wooden_sword_00",1)
+
+	print("\n====CASE 4====")
+	print_result_removed(inv4,result4)
+
+	#Case 5
+	var slot5_1 : InventorySlot = InventorySlot.new()
+	var slot5_2 : InventorySlot = InventorySlot.new()
+	var slot5_3: InventorySlot = InventorySlot.new()
+
+	slot5_1.item_data = db.get_item(&"wooden_sword_00")
+	slot5_2.quantity = 0
+	slot5_3 .item_data = db.get_item(&"wooden_sword_00")
+
+	inv5.slots.append(slot5_1)
+	inv5.slots.append(slot5_2)
+	inv5.slots.append(slot5_3)
+
+	var result5 : Dictionary = inv5.remove_item(db,&"wooden_sword_00",1)
+
+	print("\n====CASE 5====")
+	print_result_removed(inv5,result5)
+
+
+
 
 
 # สร้าง slot สำหรับ test
@@ -73,6 +87,12 @@ func add_test_slot(inv: Inventory,item,amount: int) -> void:
 
 # แสดงผลลัพธ์และทุกช่อง
 func print_result(inv: Inventory,result: Dictionary) -> void:
+	print("Added: ", result["added"])
+	print("Remaining: ", result["remaining"])
+	print("Reason: ", result["reason"])
+	print("Slot count: ", inv.slots.size())
+
+func print_result_removed(inv: Inventory,result: Dictionary) -> void:
 	print("Removed: ", result["removed"])
 	print("Remaining: ", result["remaining"])
 	print("Reason: ", result["reason"])
