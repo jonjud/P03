@@ -84,6 +84,45 @@ func remove_item(db: ItemDatabase, id: StringName, quantity: int) -> Dictionary:
 	# 5. Return consistent result
 	return {"removed": quantity - remaining, "remaining": remaining, "reason": &"ok"}
 
+func swap_slots(a: int, b: int) -> Dictionary:
+	if a < 0 or a >= slots.size() or b < 0 or b >= slots.size() :
+		return {"swapped" : false ,"remaining" : 0 , "reason" : &"error_outside_inventory_index"}
+	var temp = slots[a]
+	slots[a] = slots[b]
+	slots[b] = temp
+	return {"swapped" : true,"remaining" : 0 ,"reason" : &"ok"}
+
+func move_slots(from_index : int , to_index : int) -> Dictionary:
+	# 1. เช็กขอบเขตก่อนแตะ slots
+	if from_index < 0 or from_index >= slots.size() or to_index < 0 or to_index >= slots.size() :
+		return {"moved" : false , "remaining" : 0 , "reason" : &"error_outside_inventory_index"}
+	if from_index == to_index :
+		return {"moved" : false , "remaining" : 0 , "reason" : &"error_same_index"}
+		
+	var src : InventorySlot = slots[from_index]
+	var dst : InventorySlot = slots[to_index]
 	
+	# 2. ต้นทางว่าง = ไม่มีอะไรให้ย้าย
+	if src.item_data == null :
+		return {"moved" : false , "remaining" : 0 , "reason" : &"error_moving_null"}
 	
+	# 3. ปลายทางว่าง = ย้ายไปทั้งช่อง
+	if dst.item_data == null :
+		swap_slots(from_index , to_index)
+		return {"moved" : true , "remaining" : 0 , "reason" : &"ok"}
 	
+	# 4. ชนิดเดียวกัน และปลายทางยังมีที่ว่าง = รวม stack
+	if dst.item_data.id == src.item_data.id :
+		var space : int = maxi(0 , dst.item_data.max_stack - dst.quantity)
+		if space > 0 :
+			var moved : int = mini(space , src.quantity)
+			dst.quantity += moved
+			src.quantity -= moved
+			if src.quantity <= 0 :
+				src.item_data = null
+				src.quantity = 0
+			return {"moved" : true , "remaining" : src.quantity , "reason" : &"ok"}
+	
+	# 5. นอกนั้น (คนละชนิด / non-stackable ชนิดเดียวกัน / ปลายทางเต็ม) = สลับ
+	swap_slots(from_index , to_index)
+	return {"moved" : true , "remaining" : 0 , "reason" : &"ok"}
