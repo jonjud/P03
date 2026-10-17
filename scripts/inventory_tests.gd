@@ -111,6 +111,9 @@ func test_add() -> void:
 	add_test_slot(a5, stone(), 90)
 	add_test_slot(a5, stone(), 50)
 	check_add("add5 new slot", a5, a5.add_to_existing_stacks(db, &"stone_00", 90), 90, 0, &"ok", [99, 99, 32])
+	check("fiber in db", db.has_item(&"fiber_00"))
+	var f1 := Inventory.new()
+	check_add("add fiber",f1,f1.add_to_existing_stacks(db,&"fiber_00",120),120,0,&"ok",[99,21])
 
 # ---------- remove (stackable) ----------
 func test_remove() -> void:
