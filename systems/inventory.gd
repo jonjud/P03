@@ -126,3 +126,44 @@ func move_slots(from_index : int , to_index : int) -> Dictionary:
 	# 5. นอกนั้น (คนละชนิด / non-stackable ชนิดเดียวกัน / ปลายทางเต็ม) = สลับ
 	swap_slots(from_index , to_index)
 	return {"moved" : true , "remaining" : 0 , "reason" : &"ok"}
+
+func transfer_to(other : Inventory , db : ItemDatabase, id : StringName,quantity : int) -> Dictionary:
+	if db == null:
+		return {"transferred": false, "remaining": 0, "reason": &"error_null_id"}
+	if other == null:
+		return {"transferred": false, "remaining": 0, "reason": &"error_null_inventory"}
+	if other == self:
+		return {"transferred": false, "remaining": 0, "reason": &"error_same_inventory"}
+	
+	var item : ItemData = db.get_item(id)
+	if item == null:
+		return {"transferred": false, "remaining": 0, "reason": &"error_null_id"}
+	if quantity <= 0:
+		return {"transferred": false, "remaining": 0, "reason": &"error_wrong_quantity"}
+	var total: int = 0
+	for slot in slots:
+		if slot != null and slot.item_data != null and slot.item_data.id == id and slot.quantity > 0:
+			total += slot.quantity
+	if total < quantity:
+		return {"transferred": false, "remaining": 0, "reason": &"error_not_enough_quantity"}
+	var space : int = 0
+	for dst_slot in other.slots :
+		if dst_slot == null:
+			continue
+		if dst_slot.item_data == null:
+			space += item.max_stack
+		elif dst_slot.item_data.id == id:
+			space += maxi(0,item.max_stack- dst_slot.quantity)
+	space += maxi(0,other.max_slots - other.slots.size()) * item.max_stack
+	
+	if space < quantity :
+		return {"transferred": false, "remaining": 0, "reason": &"error_destination_full"}
+	var removed_result : Dictionary = remove_item(db, id, quantity)
+	var added_result : Dictionary = other.add_to_existing_stacks(db, id, quantity)
+	if removed_result["reason"] != &"ok" or added_result["reason"] != &"ok" :
+		push_error("นับขั้น 3 ผิด")
+		return {"transferred": false, "remaining": 0, "reason": &"error_internal"}
+	return {"transferred": true, "remaining": 0, "reason": &"ok"}
+	
+	
+	
