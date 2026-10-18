@@ -14,6 +14,7 @@ func run_all() -> void:
 	test_swap()
 	test_move()
 	test_transfer()
+	test_serialize()
 	print("Passed ", passed, " / Failed ", failed)
 
 # ---------- helpers ----------
@@ -279,3 +280,22 @@ func test_transfer() -> void:
 	add_test_slot(s8, stone(), 90)
 	add_test_slot(s8, stone(), 50)
 	transfer_case("tr8 two src slots", s8, d8, 120, true, &"ok", [20, 0], [99, 21])
+
+# ---------- serialize ----------
+func test_serialize() -> void:
+	var inv := Inventory.new()
+	inv.owner_id = "p1"
+	add_test_slot(inv, stone(), 99)
+	add_test_slot(inv, null, 0)
+	add_test_slot(inv, db.get_item(&"fiber_00"), 5)
+	var d : Dictionary = inv.to_dict()
+	check("ser1 version", d["schema_version"] == 1)
+	check("ser1 owner", d["owner_id"] == "p1")
+	check("ser1 max_slots", d["max_slots"] == inv.max_slots)
+	check("ser1 length", d["slots"].size() == 3)
+	check("ser1 slot0", d["slots"][0] == {"id": "stone_00", "quantity": 99})
+	check("ser1 empty", d["slots"][1] == {"id": "", "quantity": 0})
+	check("ser1 slot2", d["slots"][2] == {"id": "fiber_00", "quantity": 5})
+	d["slots"][0]["quantity"] = 1
+	check("ser1 no reference", inv.slots[0].quantity == 99)
+	check("ser2 empty inv", Inventory.new().to_dict()["slots"] == [])

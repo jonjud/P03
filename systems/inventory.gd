@@ -4,7 +4,7 @@ class_name Inventory
 @export var slots: Array[InventorySlot] = []
 @export var max_slots: int = 20          # หรือใช้ weight-based ภายหลัง
 @export var owner_id: String = ""        # character / player / world storage
-
+var schema_version : int = 1
 
 func add_to_existing_stacks(db : ItemDatabase , id : StringName , quantity : int) -> Dictionary :
 	var remaining : int = quantity #ใส่แล้วเหลือเท่าไหร่
@@ -164,6 +164,17 @@ func transfer_to(other : Inventory , db : ItemDatabase, id : StringName,quantity
 		push_error("นับขั้น 3 ผิด")
 		return {"transferred": false, "remaining": 0, "reason": &"error_internal"}
 	return {"transferred": true, "remaining": 0, "reason": &"ok"}
-	
-	
-	
+
+func to_dict() -> Dictionary:
+	var slt : Array = []
+	for slot in slots:
+		var dct : Dictionary = {}
+		if slot == null or slot.item_data == null:
+			dct["id"] = ""
+			dct["quantity"] = 0
+		else:
+			dct["id"] = str(slot.item_data.id)
+			dct["quantity"] = slot.quantity
+		slt.append(dct)
+	return {"schema_version": schema_version, "owner_id": owner_id, "max_slots": max_slots, "slots": slt}
+	 
