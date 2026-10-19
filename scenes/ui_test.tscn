@@ -7,3 +7,7 @@
 script = ExtResource("1_i6be1")
 
 [node name="InventoryView" parent="." unique_id=1462244761 instance=ExtResource("1_ieiqf")]
+
+[node name="InventoryViewB" parent="." unique_id=1313410560 instance=ExtResource("1_ieiqf")]
+offset_top = 200.0
+offset_bottom = 380.0
