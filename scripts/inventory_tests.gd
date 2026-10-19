@@ -16,6 +16,7 @@ func run_all() -> void:
 	test_transfer()
 	test_serialize()
 	test_deserialize()
+	test_slot_range()
 	print("Passed ", passed, " / Failed ", failed)
 
 # ---------- helpers ----------
@@ -230,7 +231,7 @@ func test_move() -> void:
 	var m8 := Inventory.new()
 	add_test_slot(m8, stone(), 66)
 	add_test_slot(m8, wood(), 55)
-	check_move("mv8 bad same index", m8, m8.move_slots(5, 5), false, 0, &"error_outside_inventory_index", [66, 55])
+	check_move("mv8 bad same index", m8, m8.move_slots(20, 20), false, 0, &"error_outside_inventory_index", [66, 55])
 	var m9 := Inventory.new()
 	add_test_slot(m9, stone(), 66)
 	add_test_slot(m9, wood(), 55)
@@ -392,3 +393,44 @@ func test_deserialize() -> void:
 	d = base_dict()
 	d["owner_id"] = 5
 	check_fail("des18 owner type", d, &"error_incorrect_owner_id")
+
+# ---------- ช่องว่างท้าย array (ข้อ A) ----------
+func one_stone() -> Inventory:
+	var inv := Inventory.new()
+	add_test_slot(inv, stone(), 99)
+	return inv
+
+func test_slot_range() -> void:
+	var a := one_stone()
+	check_move("rg1 move far", a, a.move_slots(0, 10), true, 0, &"ok", [0,0,0,0,0,0,0,0,0,0,99])
+	var b := one_stone()
+	check_swap("rg2 swap far", b, b.swap_slots(0, 10), true, &"ok", [0,0,0,0,0,0,0,0,0,0,99])
+	# ล้มแล้ว array ต้องยาวเท่าเดิม (qtys เทียบทั้ง array)
+	var c := one_stone()
+	check_move("rg3 to max_slots", c, c.move_slots(0, 20), false, 0, &"error_outside_inventory_index", [99])
+	var d := one_stone()
+	check_move("rg4 src beyond array", d, d.move_slots(15, 0), false, 0, &"error_moving_null", [99])
+	var e := one_stone()
+	add_test_slot(e, null, 0)
+	check_move("rg5 empty src no pad", e, e.move_slots(1, 10), false, 0, &"error_moving_null", [99, 0])
+	var f := one_stone()
+	check_move("rg6 same index no pad", f, f.move_slots(0, 0), false, 0, &"error_same_index", [99])
+	var g := one_stone()
+	check_swap("rg7 swap over max", g, g.swap_slots(0, 20), false, &"error_outside_inventory_index", [99])
+	# ขอบบน: index สุดท้ายที่ใช้ได้
+	var h := one_stone()
+	check("rg8 last index ok", h.move_slots(0, 19)["reason"] == &"ok")
+	check("rg8 size", h.slots.size() == 20)
+	check("rg8 item", h.slots[19].quantity == 99)
+	# serialize หลังต่อช่อง
+	var j := one_stone()
+	j.move_slots(0, 10)
+	var dj : Dictionary = j.to_dict()
+	var rj : Dictionary = Inventory.from_dict(dj, db)
+	check("rg9 roundtrip ok", rj["ok"] == true)
+	check("rg9 same dict", rj["inventory"].to_dict() == dj)
+	# max_slots เล็ก
+	var k := one_stone()
+	k.max_slots = 3
+	check_move("rg10 last of 3", k, k.move_slots(0, 2), true, 0, &"ok", [0, 0, 99])
+	check_move("rg11 over 3", k, k.move_slots(2, 3), false, 0, &"error_outside_inventory_index", [0, 0, 99])

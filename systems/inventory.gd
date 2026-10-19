@@ -51,7 +51,6 @@ func add_to_existing_stacks(db : ItemDatabase , id : StringName , quantity : int
 		reason = &"partial_full" if added > 0 else &"full"
 	return {"added" : added, "remaining" : remaining, "reason" : reason}
 
-
 func remove_item(db: ItemDatabase, id: StringName, quantity: int) -> Dictionary:
 	var remaining: int = quantity
 	# 1. Validate input
@@ -85,33 +84,32 @@ func remove_item(db: ItemDatabase, id: StringName, quantity: int) -> Dictionary:
 	return {"removed": quantity - remaining, "remaining": remaining, "reason": &"ok"}
 
 func swap_slots(a: int, b: int) -> Dictionary:
-	if a < 0 or a >= slots.size() or b < 0 or b >= slots.size() :
+	if a < 0 or a >= max_slots or b < 0 or b >= max_slots :
 		return {"swapped" : false ,"remaining" : 0 , "reason" : &"error_outside_inventory_index"}
-	var temp = slots[a]
+	_ensure_size(maxi(a, b) + 1)
+	var temp : InventorySlot = slots[a]
 	slots[a] = slots[b]
 	slots[b] = temp
 	return {"swapped" : true,"remaining" : 0 ,"reason" : &"ok"}
 
 func move_slots(from_index : int , to_index : int) -> Dictionary:
-	# 1. เช็กขอบเขตก่อนแตะ slots
-	if from_index < 0 or from_index >= slots.size() or to_index < 0 or to_index >= slots.size() :
+	# 1. เช็กขอบเขต (กับ max_slots) ก่อนแตะ slots
+	if from_index < 0 or from_index >= max_slots or to_index < 0 or to_index >= max_slots :
 		return {"moved" : false , "remaining" : 0 , "reason" : &"error_outside_inventory_index"}
 	if from_index == to_index :
 		return {"moved" : false , "remaining" : 0 , "reason" : &"error_same_index"}
-		
+	# 2. ต้นทางว่าง (รวมกรณีเกินขนาด array) ต้องล้มก่อนต่อช่อง
+	if from_index >= slots.size() or slots[from_index] == null or slots[from_index].item_data == null :
+		return {"moved" : false , "remaining" : 0 , "reason" : &"error_moving_null"}
+	# 3. ผ่านการตรวจครบแล้วค่อยต่อช่อง
+	_ensure_size(to_index + 1)
 	var src : InventorySlot = slots[from_index]
 	var dst : InventorySlot = slots[to_index]
-	
-	# 2. ต้นทางว่าง = ไม่มีอะไรให้ย้าย
-	if src.item_data == null :
-		return {"moved" : false , "remaining" : 0 , "reason" : &"error_moving_null"}
-	
-	# 3. ปลายทางว่าง = ย้ายไปทั้งช่อง
+	# 4. ปลายทางว่าง = ย้ายไปทั้งช่อง
 	if dst.item_data == null :
 		swap_slots(from_index , to_index)
 		return {"moved" : true , "remaining" : 0 , "reason" : &"ok"}
-	
-	# 4. ชนิดเดียวกัน และปลายทางยังมีที่ว่าง = รวม stack
+	# 5. ชนิดเดียวกัน และปลายทางยังมีที่ว่าง = รวม stack
 	if dst.item_data.id == src.item_data.id :
 		var space : int = maxi(0 , dst.item_data.max_stack - dst.quantity)
 		if space > 0 :
@@ -122,8 +120,8 @@ func move_slots(from_index : int , to_index : int) -> Dictionary:
 				src.item_data = null
 				src.quantity = 0
 			return {"moved" : true , "remaining" : src.quantity , "reason" : &"ok"}
-	
-	# 5. นอกนั้น (คนละชนิด / non-stackable ชนิดเดียวกัน / ปลายทางเต็ม) = สลับ
+
+	# 6. นอกนั้น = สลับ
 	swap_slots(from_index , to_index)
 	return {"moved" : true , "remaining" : 0 , "reason" : &"ok"}
 
@@ -221,5 +219,9 @@ static func from_dict(data: Dictionary, db : ItemDatabase) -> Dictionary:
 			slot.quantity = 0
 		inv.slots.append(slot)
 	return {"ok": true, "inventory": inv, "reason": &"ok"}
-		
-		
+
+func _ensure_size(n : int) -> void:
+	while slots.size() < n :
+		var s : InventorySlot = InventorySlot.new()
+		s.quantity = 0      # default ของ InventorySlot เป็น 1 ต้องตั้ง 0 เอง
+		slots.append(s)
