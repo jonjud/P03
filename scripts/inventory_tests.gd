@@ -15,6 +15,7 @@ func run_all() -> void:
 	test_move()
 	test_transfer()
 	test_serialize()
+	test_deserialize()
 	print("Passed ", passed, " / Failed ", failed)
 
 # ---------- helpers ----------
@@ -299,3 +300,95 @@ func test_serialize() -> void:
 	d["slots"][0]["quantity"] = 1
 	check("ser1 no reference", inv.slots[0].quantity == 99)
 	check("ser2 empty inv", Inventory.new().to_dict()["slots"] == [])
+
+# ---------- deserialize ----------
+func fiber() -> ItemData:
+	return db.get_item(&"fiber_00")
+
+# dict มาตรฐาน: stone 99 / ช่องว่าง / fiber 5
+func base_dict() -> Dictionary:
+	var inv := Inventory.new()
+	inv.owner_id = "p1"
+	add_test_slot(inv, stone(), 99)
+	add_test_slot(inv, null, 0)
+	add_test_slot(inv, fiber(), 5)
+	return inv.to_dict()
+
+# โหลดแล้วต้องล้ม: ok == false, inventory == null, reason ตรงที่คาด
+func check_fail(label : String , d : Dictionary , reason : StringName) -> void:
+	var r : Dictionary = Inventory.from_dict(d, db)
+	check(label + " ok", r["ok"] == false)
+	check(label + " inventory", r["inventory"] == null)
+	check(label + " reason", r["reason"] == reason)
+
+func test_deserialize() -> void:
+	# round-trip
+	var inv := Inventory.new()
+	inv.owner_id = "p1"
+	add_test_slot(inv, stone(), 99)
+	add_test_slot(inv, null, 0)
+	add_test_slot(inv, fiber(), 5)
+	var d1 : Dictionary = inv.to_dict()
+	var r1 : Dictionary = Inventory.from_dict(d1, db)
+	check("des1 ok", r1["ok"] == true)
+	check("des1 reason", r1["reason"] == &"ok")
+	check("des1 same dict", r1["inventory"].to_dict() == d1)
+	check("des1 owner", r1["inventory"].owner_id == "p1")
+	check("des1 max_slots", r1["inventory"].max_slots == inv.max_slots)
+	check("des1 empty slot kept", r1["inventory"].slots[1].item_data == null)
+	check("des1 new object", r1["inventory"] != inv)
+	var r2 : Dictionary = Inventory.from_dict(Inventory.new().to_dict(), db)
+	check("des2 empty inv", r2["ok"] == true and r2["inventory"].slots.size() == 0)
+
+	# แก้ dict หลังโหลด กระเป๋าที่ได้ต้องไม่เปลี่ยน
+	var d : Dictionary = base_dict()
+	var r3 : Dictionary = Inventory.from_dict(d, db)
+	d["slots"][0]["quantity"] = 1
+	check("des3 no reference", r3["inventory"].slots[0].quantity == 99)
+
+	# ข้อมูลผิด ต้องล้มทุกเคส
+	d = base_dict()
+	d["slots"][0]["id"] = "no_such_item"
+	check_fail("des4 unknown id", d, &"error_no_item_attached_to_id")
+	d = base_dict()
+	d["schema_version"] = 99
+	check_fail("des5 schema", d, &"error_incorrect_schema")
+	d = base_dict()
+	d.erase("slots")
+	check_fail("des6 missing slots", d, &"error_incomplete_data")
+	d = base_dict()
+	d["slots"][0]["quantity"] = 150
+	check_fail("des7 over max_stack", d, &"error_wrong_quantity")
+	d = base_dict()
+	d["slots"][0]["quantity"] = -1
+	check_fail("des8 negative", d, &"error_wrong_quantity")
+	d = base_dict()
+	d["slots"][0]["quantity"] = 0
+	check_fail("des9 zero with item", d, &"error_wrong_quantity")
+	var r10 : Dictionary = Inventory.from_dict(base_dict(), null)
+	check("des10 ok", r10["ok"] == false)
+	check("des10 reason", r10["reason"] == &"error_db_null")
+	d = base_dict()
+	d["slots"][1]["quantity"] = 5
+	check_fail("des11 empty slot with qty", d, &"error_incorrect_slot")
+	d = base_dict()
+	d["max_slots"] = 2
+	check_fail("des12 too many slots", d, &"error_slots_count_exceed")
+	d = base_dict()
+	d["slots"][0] = 5
+	check_fail("des13 slot not dict", d, &"error_incomplete_slot")
+	d = base_dict()
+	d["slots"] = "x"
+	check_fail("des14 slots not array", d, &"error_incorrect_slots_type")
+	d = base_dict()
+	d["slots"][0]["quantity"] = "99"
+	check_fail("des15 qty wrong type", d, &"error_incorrect_slot")
+	d = base_dict()
+	d["slots"][0].erase("id")
+	check_fail("des16 slot missing id", d, &"error_incomplete_slot")
+	d = base_dict()
+	d["max_slots"] = "20"
+	check_fail("des17 max_slots type", d, &"error_incorrect_max_slots")
+	d = base_dict()
+	d["owner_id"] = 5
+	check_fail("des18 owner type", d, &"error_incorrect_owner_id")

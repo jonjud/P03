@@ -4,7 +4,7 @@ class_name Inventory
 @export var slots: Array[InventorySlot] = []
 @export var max_slots: int = 20          # หรือใช้ weight-based ภายหลัง
 @export var owner_id: String = ""        # character / player / world storage
-var schema_version : int = 1
+const SCHEMA_VERSION : int = 1
 
 func add_to_existing_stacks(db : ItemDatabase , id : StringName , quantity : int) -> Dictionary :
 	var remaining : int = quantity #ใส่แล้วเหลือเท่าไหร่
@@ -176,5 +176,50 @@ func to_dict() -> Dictionary:
 			dct["id"] = str(slot.item_data.id)
 			dct["quantity"] = slot.quantity
 		slt.append(dct)
-	return {"schema_version": schema_version, "owner_id": owner_id, "max_slots": max_slots, "slots": slt}
-	 
+	return {"schema_version": SCHEMA_VERSION, "owner_id": owner_id, "max_slots": max_slots, "slots": slt}
+
+static func from_dict(data: Dictionary, db : ItemDatabase) -> Dictionary:
+	if db == null:
+		return {"ok": false, "inventory": null, "reason": &"error_db_null"}
+	if not data.has("schema_version") or not data.has("owner_id") or not data.has("max_slots") or not data.has("slots"):
+		return {"ok": false, "inventory": null, "reason": &"error_incomplete_data"}
+	if data["schema_version"] != SCHEMA_VERSION:
+		return {"ok": false, "inventory": null, "reason": &"error_incorrect_schema"}
+	if typeof(data["owner_id"]) != TYPE_STRING:
+		return {"ok": false, "inventory": null, "reason": &"error_incorrect_owner_id"}
+	if typeof(data["max_slots"]) != TYPE_INT:
+		return {"ok": false, "inventory": null, "reason": &"error_incorrect_max_slots"}
+	if typeof(data["slots"]) != TYPE_ARRAY:
+		return {"ok": false, "inventory": null, "reason": &"error_incorrect_slots_type"}
+	if data["slots"].size() > data["max_slots"]:
+		return {"ok": false, "inventory": null, "reason": &"error_slots_count_exceed"}
+	# รอบที่ 1: ตรวจทุกช่องก่อน ยังไม่สร้างอะไร
+	for s in data["slots"]:
+		if typeof(s) != TYPE_DICTIONARY or not s.has("id") or not s.has("quantity"):
+			return {"ok": false, "inventory": null, "reason": &"error_incomplete_slot"}
+		if typeof(s["id"]) != TYPE_STRING or typeof(s["quantity"]) != TYPE_INT:
+			return {"ok": false, "inventory": null, "reason": &"error_incorrect_slot"}
+		if s["id"] == "":
+			if s["quantity"] != 0:
+				return {"ok": false, "inventory": null, "reason": &"error_incorrect_slot"}
+			continue   # ช่องว่างถูกต้อง ตรวจรอบนี้เท่านั้น ไม่ได้ข้ามการสร้าง
+		var item : ItemData = db.get_item(StringName(s["id"]))
+		if item == null:
+			return {"ok": false, "inventory": null, "reason": &"error_no_item_attached_to_id"}
+		if s["quantity"] <= 0 or s["quantity"] > item.max_stack:
+			return {"ok": false, "inventory": null, "reason": &"error_wrong_quantity"}
+	# รอบที่ 2: ผ่านหมดแล้วค่อยสร้าง ทุกช่องต้องถูก append (รวมช่องว่าง)
+	var inv : Inventory = Inventory.new()
+	inv.owner_id = data["owner_id"]
+	inv.max_slots = data["max_slots"]
+	for s in data["slots"]:
+		var slot : InventorySlot = InventorySlot.new()
+		if s["id"] != "":
+			slot.item_data = db.get_item(StringName(s["id"]))
+			slot.quantity = s["quantity"]
+		else:
+			slot.quantity = 0
+		inv.slots.append(slot)
+	return {"ok": true, "inventory": inv, "reason": &"ok"}
+		
+		
