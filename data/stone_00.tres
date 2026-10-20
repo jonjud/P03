@@ -7,4 +7,5 @@
 script = ExtResource("2_k88g3")
 id = &"stone_00"
 display_name = "Small Stone"
+description = "A small stone that found universally on ground."
 metadata/_custom_type_script = "uid://wluy6hnm1xdj"

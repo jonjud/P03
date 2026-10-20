@@ -9,5 +9,10 @@ script = ExtResource("1_i6be1")
 [node name="InventoryView" parent="." unique_id=1462244761 instance=ExtResource("1_ieiqf")]
 
 [node name="InventoryViewB" parent="." unique_id=1313410560 instance=ExtResource("1_ieiqf")]
-offset_top = 200.0
-offset_bottom = 380.0
+offset_top = 240.0
+offset_bottom = 420.0
+
+[node name="MessageLabel" type="Label" parent="." unique_id=2013502655]
+offset_top = 280.0
+offset_right = 40.0
+offset_bottom = 303.0

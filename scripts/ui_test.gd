@@ -3,6 +3,14 @@ extends Node
 var db : ItemDatabase = ItemDatabase.new()
 var inv : Inventory = Inventory.new()
 var invB : Inventory = Inventory.new()
+const MESSAGES : Dictionary = {
+	&"ok": "",
+	&"error_destination_full": "ช่องเก็บของปลายทางเต็ม",
+	&"error_same_index": "เลือกช่องเดิมซ้ำ",
+	&"error_moving_null": "ช่องนี้ไม่มีของให้ย้าย",
+	&"error_not_enough_quantity": "ของไม่พอ",
+	&"error_outside_inventory_index": "ช่องนี้อยู่นอกกระเป๋า",
+	}
 
 # ช่องที่เลือกไว้: อยู่กระเป๋าไหน (null = ยังไม่ได้เลือก) และช่องที่เท่าไหร่
 var selected_inv : Inventory = null
@@ -19,23 +27,27 @@ func _ready() -> void:
 	$InventoryView.slot_clicked.connect(_on_view_clicked.bind(inv))
 	$InventoryViewB.slot_clicked.connect(_on_view_clicked.bind(invB))
 
+func _show(reason : StringName) -> void:
+	$MessageLabel.text = MESSAGES.get(reason, "ไม่สามารถทำได้")
+
 func _on_view_clicked(i : int , clicked_inv : Inventory) -> void:
 	# คลิกแรก: เลือกช่องต้นทาง (ต้องมีของ)
 	if selected_inv == null :
 		if i < clicked_inv.slots.size() and clicked_inv.slots[i].item_data != null :
 			selected_inv = clicked_inv
 			selected_index = i
-			print("Selected slot ", i)
+			$MessageLabel.text = "เลือกช่อง " + str(i + 1) + " แล้ว เลือกปลายทาง"
+		else :
+			_show(&"error_moving_null")
 		return
 	# คลิกที่สอง
 	var result : Dictionary
-	if selected_inv == clicked_inv : #ใช้ selected และ clicked_inv เพื่อแยกระหว่างกระเป๋าเดียวกันและคนละกระเป๋า
+	if selected_inv == clicked_inv :
 		result = clicked_inv.move_slots(selected_index, i)
-		print("Move result: ", result["reason"])
 	else :
 		var slot : InventorySlot = selected_inv.slots[selected_index]
 		result = selected_inv.transfer_to(clicked_inv, db, slot.item_data.id, slot.quantity)
-		print("Transfer result: ", result["reason"])
+	_show(result["reason"])
 	selected_inv = null
 	selected_index = -1
 	$InventoryView.refresh()
