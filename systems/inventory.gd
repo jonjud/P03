@@ -6,6 +6,8 @@ class_name Inventory
 @export var owner_id: String = ""        # character / player / world storage
 const SCHEMA_VERSION : int = 1
 
+signal inventory_changed
+
 func add_to_existing_stacks(db : ItemDatabase , id : StringName , quantity : int) -> Dictionary :
 	var remaining : int = quantity #ใส่แล้วเหลือเท่าไหร่
 	
@@ -49,6 +51,8 @@ func add_to_existing_stacks(db : ItemDatabase , id : StringName , quantity : int
 	
 	if remaining > 0 :
 		reason = &"partial_full" if added > 0 else &"full"
+	if added > 0 :
+		inventory_changed.emit()
 	return {"added" : added, "remaining" : remaining, "reason" : reason}
 
 func remove_item(db: ItemDatabase, id: StringName, quantity: int) -> Dictionary:
@@ -81,6 +85,7 @@ func remove_item(db: ItemDatabase, id: StringName, quantity: int) -> Dictionary:
 			if slot.quantity == 0:
 				slot.item_data = null
 	# 5. Return consistent result
+	inventory_changed.emit()
 	return {"removed": quantity - remaining, "remaining": remaining, "reason": &"ok"}
 
 func swap_slots(a: int, b: int) -> Dictionary:
@@ -90,6 +95,7 @@ func swap_slots(a: int, b: int) -> Dictionary:
 	var temp : InventorySlot = slots[a]
 	slots[a] = slots[b]
 	slots[b] = temp
+	inventory_changed.emit()
 	return {"swapped" : true,"remaining" : 0 ,"reason" : &"ok"}
 
 func move_slots(from_index : int , to_index : int) -> Dictionary:
@@ -119,6 +125,7 @@ func move_slots(from_index : int , to_index : int) -> Dictionary:
 			if src.quantity <= 0 :
 				src.item_data = null
 				src.quantity = 0
+			inventory_changed.emit()
 			return {"moved" : true , "remaining" : src.quantity , "reason" : &"ok"}
 
 	# 6. นอกนั้น = สลับ

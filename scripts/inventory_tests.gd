@@ -17,6 +17,7 @@ func run_all() -> void:
 	test_serialize()
 	test_deserialize()
 	test_slot_range()
+	test_signals()
 	print("Passed ", passed, " / Failed ", failed)
 
 # ---------- helpers ----------
@@ -26,6 +27,13 @@ func check(label : String , condition : bool) -> void:
 	else :
 		failed += 1
 		print("FAIL: ", label)
+
+# ---------- signals ----------
+# lambda แก้ตัวแปร int ข้างนอกไม่ได้ จึงใช้ Array เป็นตัวนับ
+func count_emits(inv : Inventory) -> Array:
+	var counter : Array = [0]
+	inv.inventory_changed.connect(func(): counter[0] += 1)
+	return counter
 
 func stone() -> ItemData:
 	return db.get_item(&"stone_00")
@@ -434,3 +442,87 @@ func test_slot_range() -> void:
 	k.max_slots = 3
 	check_move("rg10 last of 3", k, k.move_slots(0, 2), true, 0, &"ok", [0, 0, 99])
 	check_move("rg11 over 3", k, k.move_slots(2, 3), false, 0, &"error_outside_inventory_index", [0, 0, 99])
+
+# ---------- signals ----------
+func test_signals() -> void:
+	# add
+	var a := Inventory.new()
+	var ca := count_emits(a)
+	a.add_to_existing_stacks(db, &"stone_00", 10)
+	check("sig add ok", ca[0] == 1)
+	a.add_to_existing_stacks(db, &"no_such_id", 10)
+	a.add_to_existing_stacks(db, &"stone_00", 0)
+	check("sig add fail", ca[0] == 1)
+	var f := Inventory.new()
+	f.max_slots = 1
+	add_test_slot(f, stone(), 99)
+	var cf := count_emits(f)
+	f.add_to_existing_stacks(db, &"stone_00", 10)
+	check("sig add full", cf[0] == 0)
+	var p := Inventory.new()
+	p.max_slots = 1
+	add_test_slot(p, stone(), 90)
+	var cp := count_emits(p)
+	p.add_to_existing_stacks(db, &"stone_00", 20)
+	check("sig add partial", cp[0] == 1)
+
+	# remove
+	var r := Inventory.new()
+	add_test_slot(r, stone(), 50)
+	var cr := count_emits(r)
+	r.remove_item(db, &"stone_00", 10)
+	check("sig remove ok", cr[0] == 1)
+	r.remove_item(db, &"stone_00", 999)
+	check("sig remove fail", cr[0] == 1)
+
+	# swap
+	var s := Inventory.new()
+	add_test_slot(s, stone(), 50)
+	add_test_slot(s, wood(), 20)
+	var cs := count_emits(s)
+	s.swap_slots(0, 1)
+	check("sig swap ok", cs[0] == 1)
+	s.swap_slots(-1, 1)
+	check("sig swap fail", cs[0] == 1)
+
+	# move: สลับ / รวม stack / ไปช่องว่าง ต้องยิงอย่างละครั้ง ล้มต้องไม่ยิง
+	var m1 := Inventory.new()
+	add_test_slot(m1, stone(), 50)
+	add_test_slot(m1, wood(), 20)
+	var cm1 := count_emits(m1)
+	m1.move_slots(0, 1)
+	check("sig move swap once", cm1[0] == 1)
+	var m2 := Inventory.new()
+	add_test_slot(m2, stone(), 30)
+	add_test_slot(m2, stone(), 20)
+	var cm2 := count_emits(m2)
+	m2.move_slots(0, 1)
+	check("sig move merge once", cm2[0] == 1)
+	var m3 := Inventory.new()
+	add_test_slot(m3, stone(), 30)
+	add_test_slot(m3, null, 0)
+	var cm3 := count_emits(m3)
+	m3.move_slots(0, 1)
+	check("sig move to empty once", cm3[0] == 1)
+	m3.move_slots(1, 1)
+	check("sig move fail", cm3[0] == 1)
+
+	# transfer: สำเร็จ ฝั่งละครั้ง / ล้ม ไม่ยิงทั้งสองฝั่ง
+	var s1 := Inventory.new()
+	var d1 := Inventory.new()
+	add_test_slot(s1, stone(), 50)
+	var cs1 := count_emits(s1)
+	var cd1 := count_emits(d1)
+	s1.transfer_to(d1, db, &"stone_00", 30)
+	check("sig transfer src ok", cs1[0] == 1)
+	check("sig transfer dst ok", cd1[0] == 1)
+	var s2 := Inventory.new()
+	var d2 := Inventory.new()
+	add_test_slot(s2, stone(), 50)
+	d2.max_slots = 1
+	add_test_slot(d2, stone(), 99)
+	var cs2 := count_emits(s2)
+	var cd2 := count_emits(d2)
+	s2.transfer_to(d2, db, &"stone_00", 10)
+	check("sig transfer src fail", cs2[0] == 0)
+	check("sig transfer dst fail", cd2[0] == 0)
