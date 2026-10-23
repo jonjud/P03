@@ -14,4 +14,3 @@ func _ready() -> void:
 
 func _on_pickup_done(result: Dictionary) -> void:
 	$MessageLabel.text = MESSAGES.get(result["reason"], "ไม่สามารถเก็บได้")
-	$InventoryView.refresh()

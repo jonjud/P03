@@ -50,5 +50,3 @@ func _on_view_clicked(i : int , clicked_inv : Inventory) -> void:
 	_show(result["reason"])
 	selected_inv = null
 	selected_index = -1
-	$InventoryView.refresh()
-	$InventoryViewB.refresh()

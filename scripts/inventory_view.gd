@@ -3,7 +3,6 @@ extends Control
 var inv : Inventory
 
 
-var selected : int = -1
 
 @onready var grid_con : GridContainer = $GridContainer
 
@@ -14,8 +13,11 @@ func _ready() -> void:
 
 
 func bind(inventory : Inventory) -> void:
+	if inv != null and inv.inventory_changed.is_connected(refresh):
+		inv.inventory_changed.disconnect(refresh)
 	inv = inventory
-	selected = -1
+	if inv != null:
+		inv.inventory_changed.connect(refresh)
 	refresh()
 
 
