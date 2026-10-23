@@ -1,0 +1,26 @@
+[gd_scene format=3 uid="uid://d08wg161gb3yf"]
+
+[ext_resource type="PackedScene" uid="uid://cqda43jnsxvok" path="res://scenes/player.tscn" id="1_p31i2"]
+[ext_resource type="Script" uid="uid://bpdsitb7cbvba" path="res://scripts/pickup_test.gd" id="1_r1emx"]
+[ext_resource type="PackedScene" uid="uid://pr7e716wedn0" path="res://scenes/pickup.tscn" id="2_njvli"]
+[ext_resource type="PackedScene" uid="uid://c0u1ve6qv7mfm" path="res://scenes/inventory_view.tscn" id="3_njvli"]
+
+[node name="PickupTest" type="Node2D" unique_id=253121521]
+script = ExtResource("1_r1emx")
+
+[node name="Player" parent="." unique_id=1502524051 instance=ExtResource("1_p31i2")]
+position = Vector2(320, 160)
+
+[node name="Pickup" parent="." unique_id=1434228988 instance=ExtResource("2_njvli")]
+position = Vector2(242, 191)
+amount = 20
+
+[node name="Pickup2" parent="." unique_id=423586287 instance=ExtResource("2_njvli")]
+position = Vector2(475, 199)
+amount = 90
+
+[node name="InventoryView" parent="." unique_id=1462244761 instance=ExtResource("3_njvli")]
+
+[node name="MessageLabel" type="Label" parent="." unique_id=624255424]
+offset_right = 40.0
+offset_bottom = 23.0

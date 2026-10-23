@@ -28,6 +28,8 @@ var _last_facing: Vector2 = Vector2.DOWN
 var inv : Inventory = Inventory.new()
 var db : ItemDatabase = ItemDatabase.new()
 
+signal pickup_done(result: Dictionary)
+
 func _ready() -> void:
 	add_to_group("Player")
 	inv.owner_id = "player_1"
@@ -90,6 +92,6 @@ func is_moving() -> bool:
 	return _smooth_input.length_squared() > 0.0001
 #---------- PICK UP ----------
 func handle_pickup(item_id : StringName, amount : int) -> Dictionary:
-	# คืนผลของ op ตรงๆ: {"added", "remaining", "reason"}
-	# ล้มเมื่อไหร่ remaining = amount เสมอ ของจึงอยู่ในโลกต่อ
-	return inv.add_to_existing_stacks(db, item_id, amount)
+	var result : Dictionary = inv.add_to_existing_stacks(db, item_id, amount)
+	pickup_done.emit(result)
+	return result
