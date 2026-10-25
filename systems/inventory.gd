@@ -52,37 +52,26 @@ func add_to_existing_stacks(db : ItemDatabase , id : StringName , quantity : int
 	return OpResult.make(reason, quantity, added)
 
 func remove_item(db: ItemDatabase, id: StringName, quantity: int) -> Dictionary:
-	# 1. Validate input
 	if db == null:
 		return OpResult.make(OpResult.NULL_DB, quantity, 0)
 	if db.get_item(id) == null:
 		return OpResult.make(OpResult.UNKNOWN_ITEM, quantity, 0)
 	if quantity <= 0:
 		return OpResult.make(OpResult.INVALID_QUANTITY, quantity, 0)
-	# 2. Count only matching items before modifying slots
-	var total: int = 0
-	for slot in slots:
-		if slot != null and slot.item_data != null and slot.item_data.id == id and slot.quantity > 0:
-			total += slot.quantity
-	# Atomic failure: leave slots unchanged
-	if total < quantity:
+	if count_of(id) < quantity:
 		return OpResult.make(OpResult.NOT_ENOUGH, quantity, 0)
-	# 3. Remove from the last slot to the first
 	var remaining: int = quantity
 	for i in range(slots.size() - 1, -1, -1):
 		if remaining == 0:
 			break
 		var slot = slots[i]
-		if slot == null:
+		if slot == null or slot.item_data == null or slot.item_data.id != id or slot.quantity <= 0:
 			continue
-		if slot.item_data != null and slot.item_data.id == id and slot.quantity > 0:
-			var to_remove: int = mini(slot.quantity, remaining)
-			slot.quantity -= to_remove
-			remaining -= to_remove
-			# 4. Keep the slot; clear its contents
-			if slot.quantity == 0:
-				slot.item_data = null
-	# 5. Return consistent result
+		var to_remove: int = mini(slot.quantity, remaining)
+		slot.quantity -= to_remove
+		remaining -= to_remove
+		if slot.quantity == 0:
+			slot.item_data = null
 	inventory_changed.emit()
 	return OpResult.make(OpResult.OK, quantity, quantity - remaining)
 
