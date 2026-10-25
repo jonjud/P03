@@ -4,13 +4,15 @@ var db : ItemDatabase = ItemDatabase.new()
 var inv : Inventory = Inventory.new()
 var invB : Inventory = Inventory.new()
 const MESSAGES : Dictionary = {
-	&"ok": "",
-	&"error_destination_full": "ช่องเก็บของปลายทางเต็ม",
-	&"error_same_index": "เลือกช่องเดิมซ้ำ",
-	&"error_moving_null": "ช่องนี้ไม่มีของให้ย้าย",
-	&"error_not_enough_quantity": "ของไม่พอ",
-	&"error_outside_inventory_index": "ช่องนี้อยู่นอกกระเป๋า",
-	}
+	OpResult.OK: "",
+	OpResult.PARTIAL_FULL: "ใส่ได้ไม่ครบ ช่องเก็บของเต็ม",
+	OpResult.FULL: "กระเป๋าเต็ม",
+	OpResult.DESTINATION_FULL: "ช่องเก็บของปลายทางเต็ม",
+	OpResult.SAME_INDEX: "เลือกช่องเดิมซ้ำ",
+	OpResult.EMPTY_SOURCE: "ช่องนี้ไม่มีของให้ย้าย",
+	OpResult.NOT_ENOUGH: "ของไม่พอ",
+	OpResult.INVALID_INDEX: "ช่องนี้อยู่นอกกระเป๋า",
+}
 
 # ช่องที่เลือกไว้: อยู่กระเป๋าไหน (null = ยังไม่ได้เลือก) และช่องที่เท่าไหร่
 var selected_inv : Inventory = null
