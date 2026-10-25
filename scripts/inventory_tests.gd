@@ -19,6 +19,7 @@ func run_all() -> void:
 	#test_deserialize()
 	test_slot_range()
 	test_signals()
+	test_conservation()
 	print("Passed ", passed, " / Failed ", failed)
 
 # ---------- helpers ----------
@@ -598,3 +599,26 @@ func test_atomic() -> void:
 				check(label + " not internal", r["reason"] != OpResult.INTERNAL)
 				if not r["ok"]:
 					check(label + " unchanged", qtys(src) == before_src and qtys(dst) == before_dst)
+
+# ---------- conservation ของ swap/move ----------
+func totals(inv : Inventory) -> Array:
+	return [inv.count_of(&"stone_00"), inv.count_of(&"wood_00")]
+
+func test_conservation() -> void:
+	var idx : Array = [-1, 0, 1, 2, 3, 5, 19, 20]
+	var list : Array = sample_inventories()
+	for i in range(list.size()):
+		for a in idx:
+			for b in idx:
+				var label : String = "cons i%d %d,%d" % [i, a, b]
+				var s : Inventory = clone_inv(list[i])
+				var before : Array = totals(s)
+				var r1 : Dictionary = s.swap_slots(a, b)
+				check_contract(label + " swap", r1)
+				check(label + " swap total", totals(s) == before)
+				var m : Inventory = clone_inv(list[i])
+				var r2 : Dictionary = m.move_slots(a, b)
+				check_contract(label + " move", r2)
+				check(label + " move total", totals(m) == before)
+				if r2["done"] == 0:
+					check(label + " move unchanged", qtys(m) == qtys(list[i]))
