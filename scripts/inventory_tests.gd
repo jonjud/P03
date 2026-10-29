@@ -16,7 +16,7 @@ func run_all() -> void:
 	test_transfer()
 	test_atomic()
 	test_serialize()
-	#test_deserialize()
+	test_deserialize()
 	test_slot_range()
 	test_signals()
 	test_conservation()
